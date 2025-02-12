@@ -1,4 +1,5 @@
 use anyhow::bail;
+use gtk::ResponseType::No;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -65,25 +66,30 @@ impl LinkData {
         let current_link_pcie = gt_pcie_map.get(&current_link_speed.to_lowercase());
         let max_link_pcie = gt_pcie_map.get(&max_link_speed.to_lowercase());
 
-        if current_link_pcie.is_some() && max_link_pcie.is_some() {
+        if current_link_pcie.is_some() {
+            let current = Some(format!(
+                "PCIe {} x{}",
+                current_link_pcie.unwrap().to_string(),
+                current_link_width,
+            ));
+
+            let max =
+                max_link_pcie.map(|max| format!("PCIe {} x{}", max.to_string(), max_link_width));
+
+            let summary = if max.is_none() || current.eq(&max) {
+                current.clone()
+            } else {
+                Some(format!(
+                    "{} / {}",
+                    current.as_ref().unwrap(),
+                    max.as_ref().unwrap()
+                ))
+            };
+
             return Ok(LinkData {
-                current_link: Some(format!(
-                    "PCIe {} x{}",
-                    current_link_pcie.unwrap().to_string(),
-                    current_link_width,
-                )),
-                max_link: Some(format!(
-                    "PCIe {} x{}",
-                    max_link_pcie.unwrap().to_string(),
-                    max_link_width
-                )),
-                summary: Some(format!(
-                    "PCIe {} x{} / PCIe {} x{}",
-                    current_link_pcie.unwrap().to_string(),
-                    current_link_width,
-                    max_link_pcie.unwrap().to_string(),
-                    max_link_width
-                )),
+                current_link: current.clone(),
+                max_link: max.clone(),
+                summary: summary.clone(),
             });
         }
         bail!("Could not find PCIE link speed")
