@@ -10,7 +10,6 @@ use log::{debug, info, trace};
 use process_data::{pci_slot::PciSlot, GpuIdentifier};
 use v3d::V3dGpu;
 
-use adw::gdk::GLError::LinkFailed;
 use glob::glob;
 use std::{
     path::{Path, PathBuf},

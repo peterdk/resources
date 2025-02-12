@@ -1,9 +1,8 @@
 use super::units::convert_storage;
 use crate::i18n::{i18n, i18n_f};
 use crate::utils::link::LinkData;
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use gtk::gio::{Icon, ThemedIcon};
-use gtk::AccessibleRole::Link;
 use lazy_regex::{lazy_regex, Lazy, Regex};
 use log::trace;
 use std::{

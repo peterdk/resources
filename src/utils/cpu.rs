@@ -10,7 +10,7 @@ use std::{
 
 const PROC_STAT: &str = "/proc/stat";
 
-const KNOWN_HWMONS: &[&str] = &["zenpower", "coretemp", "k10temp"];
+const KNOWN_HWMONS: &[&str] = &["zenpower", "coretemp", "k10temp", "cpuss0_top_thermal"];
 
 const KNOWN_THERMAL_ZONES: &[&str] = &["cpu-thermal", "x86_pkg_temp", "acpitz"];
 
