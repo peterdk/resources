@@ -1,5 +1,9 @@
-use anyhow::{Context, Result};
+use super::units::convert_storage;
+use crate::i18n::{i18n, i18n_f};
+use crate::utils::link::LinkData;
+use anyhow::{bail, Context, Result};
 use gtk::gio::{Icon, ThemedIcon};
+use gtk::AccessibleRole::Link;
 use lazy_regex::{lazy_regex, Lazy, Regex};
 use log::trace;
 use std::{
@@ -7,10 +11,6 @@ use std::{
     fmt::Display,
     path::{Path, PathBuf},
 };
-
-use crate::i18n::{i18n, i18n_f};
-
-use super::units::convert_storage;
 
 const PATH_SYSFS: &str = "/sys/block";
 
@@ -26,6 +26,7 @@ pub struct DriveData {
     pub removable: Result<bool>,
     pub disk_stats: HashMap<String, usize>,
     pub capacity: Result<u64>,
+    pub link: Option<LinkData>,
 }
 
 impl DriveData {
@@ -40,7 +41,7 @@ impl DriveData {
         let removable = inner.removable();
         let disk_stats = inner.sys_stats().unwrap_or_default();
         let capacity = inner.capacity();
-
+        let link = inner.link();
         let drive_data = Self {
             inner,
             is_virtual,
@@ -48,6 +49,7 @@ impl DriveData {
             removable,
             disk_stats,
             capacity,
+            link,
         };
 
         trace!(
@@ -84,6 +86,7 @@ pub struct Drive {
     pub drive_type: DriveType,
     pub block_device: String,
     pub sysfs_path: PathBuf,
+    pub link: Option<LinkData>,
 }
 
 impl Display for DriveType {
@@ -140,7 +143,7 @@ impl Drive {
         drive.block_device = block_device;
         drive.model = drive.model().ok().map(|model| model.trim().to_string());
         drive.drive_type = drive.drive_type().unwrap_or_default();
-
+        drive.link = LinkData::for_disk(&drive.sysfs_path.join("device")).ok();
         trace!("Created Drive object of {path:?}: {drive:?}");
 
         drive
@@ -346,6 +349,9 @@ impl Drive {
         }
     }
 
+    pub fn link(&self) -> Option<LinkData> {
+        return self.link.clone();
+    }
     pub fn default_icon() -> Icon {
         ThemedIcon::new("unknown-drive-type-symbolic").into()
     }

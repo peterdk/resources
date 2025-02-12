@@ -54,6 +54,8 @@ mod imp {
         pub driver_used: TemplateChild<adw::ActionRow>,
         #[template_child]
         pub max_power_cap: TemplateChild<adw::ActionRow>,
+        #[template_child]
+        pub link: TemplateChild<adw::ActionRow>,
 
         #[property(get)]
         uses_progress_bar: Cell<bool>,
@@ -108,6 +110,7 @@ mod imp {
                 pci_slot: Default::default(),
                 driver_used: Default::default(),
                 max_power_cap: Default::default(),
+                link: Default::default(),
                 uses_progress_bar: Cell::new(true),
                 main_graph_color: glib::Bytes::from_static(&super::ResGPU::MAIN_GRAPH_COLOR),
                 icon: RefCell::new(ThemedIcon::new("gpu-symbolic").into()),
@@ -285,6 +288,7 @@ impl ResGPU {
             power_cap,
             power_cap_max,
             nvidia: _,
+            link,
         } = gpu_data;
 
         let mut usage_percentage_string = usage_fraction.map_or_else(
@@ -390,6 +394,16 @@ impl ResGPU {
                 .set_subtitle(&convert_frequency(*vram_clockspeed));
         } else {
             imp.vram_clockspeed.set_subtitle(&i18n("N/A"));
+        }
+
+        if let Some(link) = link {
+            if let Some(summary) = &link.summary {
+                imp.link.set_subtitle(&summary);
+            } else {
+                imp.link.set_subtitle(&i18n("N/A"));
+            }
+        } else {
+            imp.link.set_subtitle(&i18n("N/A"));
         }
 
         imp.max_power_cap
