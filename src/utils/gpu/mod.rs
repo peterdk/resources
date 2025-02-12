@@ -10,19 +10,19 @@ use log::{debug, info, trace};
 use process_data::{pci_slot::PciSlot, GpuIdentifier};
 use v3d::V3dGpu;
 
+use adw::gdk::GLError::LinkFailed;
+use glob::glob;
 use std::{
     path::{Path, PathBuf},
     str::FromStr,
 };
 
-use glob::glob;
-
+use self::{amd::AmdGpu, intel::IntelGpu, nvidia::NvidiaGpu, other::OtherGpu};
+use crate::utils::link::LinkData;
 use crate::{
     i18n::i18n,
     utils::{pci::Device, read_uevent},
 };
-
-use self::{amd::AmdGpu, intel::IntelGpu, nvidia::NvidiaGpu, other::OtherGpu};
 
 use super::pci::Vendor;
 
@@ -55,6 +55,8 @@ pub struct GpuData {
     pub power_cap_max: Option<f64>,
 
     pub nvidia: bool,
+
+    pub link: Option<LinkData>,
 }
 
 impl GpuData {
@@ -83,6 +85,7 @@ impl GpuData {
 
         let nvidia = matches!(gpu, Gpu::Nvidia(_));
 
+        let link = gpu.link();
         let gpu_data = Self {
             gpu_identifier,
             usage_fraction,
@@ -97,6 +100,7 @@ impl GpuData {
             power_cap,
             power_cap_max,
             nvidia,
+            link,
         };
 
         trace!("Gathered GPU data for {}: {gpu_data:?}", gpu_identifier);
@@ -524,5 +528,16 @@ impl Gpu {
             Gpu::V3d(gpu) => gpu.power_cap_max(),
             Gpu::Other(gpu) => gpu.power_cap_max(),
         }
+    }
+
+    pub fn link(&self) -> Option<LinkData> {
+        let path = match self {
+            Gpu::Amd(gpu) => gpu.sysfs_path(),
+            Gpu::Intel(gpu) => gpu.sysfs_path(),
+            Gpu::Nvidia(gpu) => gpu.sysfs_path(),
+            Gpu::V3d(gpu) => gpu.sysfs_path(),
+            Gpu::Other(gpu) => gpu.sysfs_path(),
+        };
+        LinkData::for_drm_gpu(&path.join("device")).ok()
     }
 }

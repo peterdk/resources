@@ -52,7 +52,7 @@ mod imp {
         #[template_child]
         pub removable: TemplateChild<adw::ActionRow>,
         #[template_child]
-        pub pcie: TemplateChild<adw::ActionRow>,
+        pub link: TemplateChild<adw::ActionRow>,
         pub old_stats: RefCell<HashMap<String, usize>>,
         pub last_timestamp: Cell<SystemTime>,
 
@@ -118,7 +118,7 @@ mod imp {
                 capacity: Default::default(),
                 writable: Default::default(),
                 removable: Default::default(),
-                pcie: Default::default(),
+                link: Default::default(),
                 uses_progress_bar: Cell::new(true),
                 main_graph_color: glib::Bytes::from_static(&super::ResDrive::MAIN_GRAPH_COLOR),
                 icon: RefCell::new(Drive::default_icon()),
@@ -283,7 +283,7 @@ impl ResDrive {
             removable,
             disk_stats,
             capacity,
-            pcie,
+            link,
         } = drive_data;
 
         let time_passed = SystemTime::now()
@@ -423,10 +423,14 @@ impl ResDrive {
             imp.removable.set_subtitle(&i18n("N/A"));
         }
 
-        if let Some(pcie) = pcie {
-            imp.pcie.set_subtitle(&pcie);
+        if let Some(link) = link {
+            if let Some(summary) = &link.summary {
+                imp.link.set_subtitle(&summary);
+            } else {
+                imp.link.set_subtitle(&i18n("N/A"));
+            }
         } else {
-            imp.pcie.set_subtitle(&i18n("N/A"));
+            imp.link.set_subtitle(&i18n("N/A"));
         }
         self.set_property(
             "tab_usage_string",

@@ -1,5 +1,9 @@
+use super::units::convert_storage;
+use crate::i18n::{i18n, i18n_f};
+use crate::utils::link::LinkData;
 use anyhow::{bail, Context, Result};
 use gtk::gio::{Icon, ThemedIcon};
+use gtk::AccessibleRole::Link;
 use lazy_regex::{lazy_regex, Lazy, Regex};
 use log::trace;
 use std::{
@@ -7,10 +11,6 @@ use std::{
     fmt::Display,
     path::{Path, PathBuf},
 };
-
-use crate::i18n::{i18n, i18n_f};
-
-use super::units::convert_storage;
 
 const PATH_SYSFS: &str = "/sys/block";
 
@@ -26,7 +26,7 @@ pub struct DriveData {
     pub removable: Result<bool>,
     pub disk_stats: HashMap<String, usize>,
     pub capacity: Result<u64>,
-    pub pcie: Option<String>,
+    pub link: Option<LinkData>,
 }
 
 impl DriveData {
@@ -41,8 +41,7 @@ impl DriveData {
         let removable = inner.removable();
         let disk_stats = inner.sys_stats().unwrap_or_default();
         let capacity = inner.capacity();
-        let pcie = inner.get_pcie_speed().ok();
-
+        let link = inner.link();
         let drive_data = Self {
             inner,
             is_virtual,
@@ -50,7 +49,7 @@ impl DriveData {
             removable,
             disk_stats,
             capacity,
-            pcie,
+            link,
         };
 
         trace!(
@@ -87,7 +86,7 @@ pub struct Drive {
     pub drive_type: DriveType,
     pub block_device: String,
     pub sysfs_path: PathBuf,
-    pub pcie_speed: Option<String>,
+    pub link: Option<LinkData>,
 }
 
 impl Display for DriveType {
@@ -144,65 +143,12 @@ impl Drive {
         drive.block_device = block_device;
         drive.model = drive.model().ok().map(|model| model.trim().to_string());
         drive.drive_type = drive.drive_type().unwrap_or_default();
-        drive.pcie_speed = drive.get_pcie_speed().ok();
+        drive.link = LinkData::for_disk(&drive.sysfs_path.join("device")).ok();
         trace!("Created Drive object of {path:?}: {drive:?}");
 
         drive
     }
 
-    pub fn get_pcie_speed(&self) -> Result<String> {
-        let path = self.sysfs_path.clone();
-        let transport = std::fs::read_to_string(path.clone().join("device/transport"))?;
-        if transport.trim() == "pcie" {
-            let address = std::fs::read_to_string(path.join("device/address"))?
-                .trim()
-                .to_string();
-            if !address.is_empty() {
-                let pcie_dir = format!("/sys/bus/pci/devices/{address}/");
-                let pcie_folder = Path::new(pcie_dir.as_str());
-                if pcie_folder.exists() {
-                    let current_link_speed =
-                        std::fs::read_to_string(pcie_folder.join("current_link_speed"))?
-                            .trim()
-                            .to_string();
-                    let max_link_speed =
-                        std::fs::read_to_string(pcie_folder.join("max_link_speed"))?
-                            .trim()
-                            .to_string();
-                    let current_link_width =
-                        std::fs::read_to_string(pcie_folder.join("current_link_width"))?
-                            .trim()
-                            .to_string();
-                    let max_link_width =
-                        std::fs::read_to_string(pcie_folder.join("max_link_width"))?
-                            .trim()
-                            .to_string();
-
-                    let gt_pcie_map = HashMap::from(
-                        [
-                            ("2.5 GT/s PCIe", "1.0"),
-                            ("5.0 GT/s PCIe ", "2.0"),
-                            ("8.0 GT/s PCIe", "3.0"),
-                            ("16.0 GT/s PCIe", "4.0"),
-                            ("32.0 GT/s PCIe", "5.0"),
-                        ]
-                        .map(|(k, v)| (k.to_lowercase(), v)),
-                    );
-                    let current_link_pcie = gt_pcie_map.get(&current_link_speed.to_lowercase());
-                    let max_link_pcie = gt_pcie_map.get(&max_link_speed.to_lowercase());
-
-                    if current_link_pcie.is_some() {
-                        return Ok(format!(
-                            "PCIe {} x{}",
-                            current_link_pcie.unwrap().to_string(),
-                            current_link_width
-                        ));
-                    }
-                }
-            }
-        }
-        bail!("Could not get PCIE link speed")
-    }
     /// Returns the SysFS Paths of possible drives
     ///
     /// # Errors
@@ -403,6 +349,9 @@ impl Drive {
         }
     }
 
+    pub fn link(&self) -> Option<LinkData> {
+        return self.link.clone();
+    }
     pub fn default_icon() -> Icon {
         ThemedIcon::new("unknown-drive-type-symbolic").into()
     }
