@@ -169,20 +169,26 @@ impl Battery {
             let entry = entry?;
             let path = entry.path();
 
-            //type == "Battery"
-            //scope != "Device" (HID device batteries)
-            let power_supply_type = std::fs::read_to_string(path.join("type"));
-            let power_supply_scope = std::fs::read_to_string(path.join("scope"));
-            if let Ok(power_supply_type) = power_supply_type {
-                if power_supply_type.trim() == "Battery" {
-                    if power_supply_scope.is_err() || power_supply_scope.unwrap().trim() != "Device"
-                    {
-                        list.push(entry.path());
-                    }
-                }
+            if (Self::is_valid_power_supply(&path)) {
+                list.push(path);
             }
         }
         Ok(list)
+    }
+
+    pub fn is_valid_power_supply(path: &PathBuf) -> bool {
+        //type == "Battery"
+        //scope != "Device" (HID device batteries)
+        let power_supply_type = std::fs::read_to_string(path.join("type"));
+        let power_supply_scope = std::fs::read_to_string(path.join("scope"));
+        if let Ok(power_supply_type) = power_supply_type {
+            if power_supply_type.trim() == "Battery" {
+                if power_supply_scope.is_err() || power_supply_scope.unwrap().trim() != "Device" {
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     pub fn from_sysfs<P: AsRef<Path>>(sysfs_path: P) -> Battery {
