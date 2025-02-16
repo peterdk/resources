@@ -2,6 +2,7 @@ use crate::i18n::i18n;
 use crate::utils::drive::{Drive, DriveType};
 use crate::utils::gpu::{Gpu, GpuImpl};
 use anyhow::{anyhow, bail, Context, Error, Result};
+use process_data::GpuIdentifier::PciSlot;
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -67,7 +68,13 @@ impl PcieLink {
             Gpu::Other(data) => data.sysfs_path(),
         };
         let device_path = drm_path.join("device");
-        Self::read_pcie_link_data(&device_path.to_path_buf())
+        Self::read_pcie_link_data(&device_path.to_path_buf()).or_else(|e| {
+            if let PciSlot(slot) = gpu.gpu_identifier() {
+                Self::read_using_pcie_address(&format!("{:04x}:{:02x}", slot.domain, slot.bus))
+            } else {
+                Err(e)
+            }
+        })
     }
 
     fn for_nvme(path: &PathBuf) -> Result<Self> {
