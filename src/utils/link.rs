@@ -70,7 +70,7 @@ impl PcieLink {
         let device_path = drm_path.join("device");
         Self::read_pcie_link_data(&device_path.to_path_buf()).or_else(|e| {
             if let PciSlot(slot) = gpu.gpu_identifier() {
-                Self::read_using_pcie_address(&format!("{:04x}:{:02x}", slot.domain, slot.bus))
+                Self::read_using_pcie_address(&slot.to_string())
             } else {
                 Err(e)
             }
@@ -114,13 +114,16 @@ impl PcieLink {
             .map(|x| x.trim().to_string())
             .context("Could not read max link width");
 
-        let current = PcieLinkData::parse(&current_pcie_speed_raw, &current_pcie_width_raw);
+        let current = PcieLinkData::parse(&current_pcie_speed_raw, &current_pcie_width_raw)?;
         let max = if let (Ok(speed), Ok(width)) = (max_pcie_speed_raw, max_pcie_width_raw) {
             PcieLinkData::parse(&speed, &width)
         } else {
             Err(anyhow!("Could not parse max PCIe link"))
         };
-        Ok(PcieLink { current, max })
+        Ok(PcieLink {
+            current: Ok(current),
+            max,
+        })
     }
 }
 
