@@ -54,7 +54,7 @@ impl PciSlot {
     /// assert_eq!(pci_slot.number(), 0x1b);
     /// assert_eq!(pci_slot.function(), 0x3);
     /// ```
-    ///
+    /// test
     /// # Errors
     /// Returns a `PciSlotError` error if any of the input values are out of bounds.
     pub fn try_new(domain: u16, bus: u8, number: u8, function: u8) -> Result<Self, PciSlotError> {
