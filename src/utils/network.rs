@@ -1,15 +1,15 @@
+use super::{pci::Device, read_uevent};
+use crate::i18n::i18n;
+use anyhow::{Context, Result};
+use gtk::gio::{Icon, ThemedIcon};
+use log::trace;
+use process_data::pci_slot::PciSlot;
+use std::str::FromStr;
 use std::{
     ffi::OsString,
     fmt::Display,
     path::{Path, PathBuf},
 };
-
-use anyhow::{Context, Result};
-use gtk::gio::{Icon, ThemedIcon};
-use log::trace;
-
-use super::{pci::Device, read_uevent};
-use crate::i18n::i18n;
 
 const PATH_SYSFS: &str = "/sys/class/net";
 
@@ -110,6 +110,7 @@ pub struct NetworkInterface {
     pub device_label: Option<String>,
     pub hw_address: Option<String>,
     pub sysfs_path: PathBuf,
+    pub pcie_slot: Option<PciSlot>,
     received_bytes_path: PathBuf,
     sent_bytes_path: PathBuf,
 }
@@ -192,6 +193,9 @@ impl NetworkInterface {
         } else {
             None
         };
+        let pcie_slot = dev_uevent
+            .get("PCI_SLOT_NAME")
+            .map(|a| PciSlot::from_str(&a).unwrap_or_default());
 
         let sysfs_path_clone = sysfs_path.to_owned();
         let speed = std::fs::read_to_string(sysfs_path_clone.join("speed"))
@@ -220,6 +224,7 @@ impl NetworkInterface {
             device,
             device_label,
             hw_address,
+            pcie_slot,
             sysfs_path: sysfs_path.to_path_buf(),
             received_bytes_path: sysfs_path.join(PathBuf::from("statistics/rx_bytes")),
             sent_bytes_path: sysfs_path.join(PathBuf::from("statistics/tx_bytes")),

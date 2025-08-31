@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use std::time::{Duration, SystemTime};
 
 use crate::config::PROFILE;
@@ -9,6 +10,7 @@ use adw::{glib::property::PropertySet, prelude::*, subclass::prelude::*};
 use gtk::glib;
 use log::trace;
 use plotters::prelude::LogScalable;
+use process_data::pci_slot::PciSlot;
 
 pub const TAB_ID_PREFIX: &str = "network";
 
@@ -226,7 +228,9 @@ impl ResNetwork {
         let network_interface = &network_data.inner;
         let link_speed = network_interface.link_speed();
         let wifi_link = LinkData::from_wifi_adapter(network_interface);
-
+        let pcieLink = network_interface
+            .pcie_slot
+            .map(|s| LinkData::from_pci_slot(&s).unwrap());
         let tab_id = format!(
             "{}-{}",
             TAB_ID_PREFIX,
@@ -288,10 +292,18 @@ impl ResNetwork {
             imp.network_name.set_visible(false);
         }
 
-        imp.link.set_subtitle(&wifi_link.as_ref().map_or_else(
-            |_| i18n("N/A"),
-            |network_link_data| network_link_data.to_string(),
-        ));
+        if wifi_link.is_err() {
+            imp.link.set_subtitle(
+                &pcieLink
+                    .as_ref()
+                    .map_or_else(|| i18n("N/A"), |link| link.to_string()),
+            );
+        } else {
+            imp.link.set_subtitle(&wifi_link.as_ref().map_or_else(
+                |_| i18n("N/A"),
+                |network_link_data| network_link_data.to_string(),
+            ));
+        }
 
         imp.link_speed.set_subtitle(
             &(if let Ok(wifi_link) = wifi_link {
@@ -333,6 +345,10 @@ impl ResNetwork {
 
         let wifi_link = LinkData::from_wifi_adapter(&network_data.inner);
         let link_speed = network_data.inner.link_speed();
+        let pcieLink = network_data
+            .inner
+            .pcie_slot
+            .map(|s| LinkData::from_pci_slot(&s).unwrap());
 
         let imp = self.imp();
         let time_passed = SystemTime::now()
@@ -420,10 +436,18 @@ impl ResNetwork {
             imp.network_name.set_visible(false);
         }
 
-        imp.link.set_subtitle(&wifi_link.as_ref().map_or_else(
-            |_| i18n("N/A"),
-            |network_link_data| network_link_data.to_string(),
-        ));
+        if wifi_link.is_err() {
+            imp.link.set_subtitle(
+                &pcieLink
+                    .as_ref()
+                    .map_or_else(|| i18n("N/A"), |link| link.to_string()),
+            );
+        } else {
+            imp.link.set_subtitle(&wifi_link.as_ref().map_or_else(
+                |_| i18n("N/A"),
+                |network_link_data| network_link_data.to_string(),
+            ));
+        }
 
         imp.link_speed.set_subtitle(
             &(if let Ok(wifi_link) = wifi_link {
